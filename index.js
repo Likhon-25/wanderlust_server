@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
@@ -24,6 +24,7 @@ export async function connectToMongoDB() {
 const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("wanderlust");
 const destinationCollection = db.collection("destination");
+const bookingCollection = db.collection("booking");
 
 //** http://localhost:5000/add_destinations
 app.post("/add_destinations", async (req, res) => {
@@ -33,10 +34,41 @@ app.post("/add_destinations", async (req, res) => {
   res.send(result);
 });
 
-app.get(("/destinations"), async(req,res) =>{
-  const result = await destinationCollection.find().toArray()
-  res.send(result)
-})
+app.get("/destinations", async (req, res) => {
+  const result = await destinationCollection.find().toArray();
+  res.send(result);
+});
+
+app.get("/destination/:id", async (req, res) => {
+  const { id } = req.params;
+  const result = await destinationCollection.findOne({ _id: new ObjectId(id) });
+  res.send({ result });
+});
+
+app.patch("/destination/:id", async (req, res) => {
+  const { id } = req.params;
+  const UpdatedData = req.body;
+  const result = await destinationCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: UpdatedData },
+  );
+  res.json(result);
+});
+
+app.delete("/destination/:id", async (req, res) => {
+  const { id } = req.params;
+  const result = await destinationCollection.deleteOne({
+    _id: new ObjectId(id),
+  });
+  res.json(result);
+});
+
+app.post("/booking", async (req, res) => {
+  const data = req.body;
+  const result = await bookingCollection.insertOne(data);
+  console.log(result);
+  res.send(result);
+});
 
 app.get("/", (req, res) => {
   res.send({ message: `server is running fint!` });
