@@ -61,10 +61,9 @@ const verifyToken =async (req, res, next) => {
 
 
 //** http://localhost:5000/add_destinations
-app.post("/add_destinations", async (req, res) => {
+app.post("/add_destinations",verifyToken, async (req, res) => {
   const data = req.body;
   const result = await destinationCollection.insertOne(data);
-  console.log(result);
   res.send(result);
 });
 
@@ -81,7 +80,7 @@ app.get("/destination/:id", verifyToken, async (req, res) => {
   res.send({ result });
 });
 
-app.patch("/destination/:id", async (req, res) => {
+app.patch("/destination/:id",verifyToken async (req, res) => {
   const { id } = req.params;
   const UpdatedData = req.body;
   const result = await destinationCollection.updateOne(
