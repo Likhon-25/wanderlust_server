@@ -26,6 +26,19 @@ const db = mongoClient.db("wanderlust");
 const destinationCollection = db.collection("destination");
 const bookingCollection = db.collection("booking");
 
+const verifyApi = (req, res, next) => {
+  (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    console.log(authHeader);
+
+    if (authHeader !== "User Logged In") {
+      return res.status(401).send({ msg: "Unauthorized access" });
+    }
+    console.log("I am Middleware");
+    next();
+  };
+};
+
 //** http://localhost:5000/add_destinations
 app.post("/add_destinations", async (req, res) => {
   const data = req.body;
@@ -39,9 +52,11 @@ app.get("/destinations", async (req, res) => {
   res.send(result);
 });
 
-app.get("/destination/:id", async (req, res) => {
+app.get("/destination/:id", verifyApi, async (req, res) => {
   const { id } = req.params;
-  const result = await destinationCollection.findOne({ _id: new ObjectId(id) });
+  const result = await destinationCollection.findOne({
+    _id: new ObjectId(id),
+  });
   res.send({ result });
 });
 
@@ -68,6 +83,43 @@ app.post("/booking", async (req, res) => {
   const result = await bookingCollection.insertOne(data);
   console.log(result);
   res.send(result);
+});
+
+app.get("/my-bookings/:email", async (req, res) => {
+  const { email } = req.params;
+  const result = await bookingCollection.find({ email: email }).toArray();
+
+  res.send(result);
+});
+
+app.delete("/my-bookings/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid booking id" });
+  }
+
+  try {
+    const bookingId = new ObjectId(id);
+    const result = await bookingCollection.deleteOne({
+      $or: [{ _id: bookingId }, { _id: id }],
+    });
+
+    if (result.deletedCount === 0) {
+      console.log("Booking ID was not found:", id);
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    return res.json({
+      message: "Booking cancelled successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Server error while cancelling booking" });
+  }
 });
 
 app.get("/", (req, res) => {
