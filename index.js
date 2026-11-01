@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const app = express();
 const PORT = 5000;
@@ -26,18 +27,38 @@ const db = mongoClient.db("wanderlust");
 const destinationCollection = db.collection("destination");
 const bookingCollection = db.collection("booking");
 
-const verifyApi = (req, res, next) => {
-  (req, res, next) => {
+const verifyToken =async (req, res, next) => {
     const authHeader = req.headers.authorization;
-    console.log(authHeader);
-
-    if (authHeader !== "User Logged In") {
+    if(!authHeader) {
       return res.status(401).send({ msg: "Unauthorized access" });
     }
-    console.log("I am Middleware");
+    const token = authHeader.split(" ")[1];
+    
+    if(!token) {
+      return res.status(401).send({ msg: "Unauthorized access" });
+    }
+
+    const JWKS = createRemoteJWKSet( new URL('http://localhost:3000/api/auth/jwks'))
+    const {payload} = await jwtVerify(token, JWKS);
+
+    try {
+      const { payload } = await jwtVerify(token, JWKS);
+    } catch (error) {
+      return res.status(500).send({ msg: "Error verifying token" });
+    }
+
+
+
+
+
+
+
+
+
+    console.log(payload);
     next();
   };
-};
+
 
 //** http://localhost:5000/add_destinations
 app.post("/add_destinations", async (req, res) => {
@@ -52,7 +73,7 @@ app.get("/destinations", async (req, res) => {
   res.send(result);
 });
 
-app.get("/destination/:id", verifyApi, async (req, res) => {
+app.get("/destination/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   const result = await destinationCollection.findOne({
     _id: new ObjectId(id),
